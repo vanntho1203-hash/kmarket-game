@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Market | Trải nghiệm & Trúng quà</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        kmarket: {
+                            green: '#00563f', // Dark Green
+                            red: '#E31837',   // Red
+                            dark: '#222222',
+                            light: '#f8f9fa'
+                        }
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            background-image: 
+                radial-gradient(circle at top right, rgba(0, 86, 63, 0.08), transparent 40%),
+                radial-gradient(circle at bottom left, rgba(227, 24, 55, 0.08), transparent 40%);
+            min-height: 100vh;
+        }
+
+        /* Wheel Canvas Styling */
+        #wheel-canvas {
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            border-radius: 50%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15), inset 0 0 15px rgba(0,0,0,0.1);
+            border: 8px solid #00563f;
+            background-color: white;
+        }
+
+        /* Custom Modal Animations */
+        .modal-overlay {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-out;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Screen Transitions */
+        .screen {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Confetti Effect */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased flex flex-col items-center justify-center relative overflow-x-hidden min-h-screen">
+
+    <nav class="absolute top-0 w-full p-4 md:p-6 flex justify-center z-10">
+        <div class="flex items-center gap-2 bg-white px-6 py-2.5 rounded-full shadow-md border border-gray-100">
+            <div class="w-8 h-8 rounded-full bg-kmarket-green flex items-center justify-center text-white font-bold text-sm">K</div>
+            <span class="font-bold text-xl tracking-tight text-kmarket-green">K-MARKET<span class="text-kmarket-red">.</span></span>
+        </div>
+    </nav>
+
+    <main class="w-full max-w-lg mx-auto px-4 py-20 relative z-10 flex-grow flex items-center justify-center">
+        
+        <!-- ================= SCREEN 0: WELCOME ================= -->
+        <div id="screen-welcome" class="screen active flex-col items-center text-center bg-white p-8 md:p-10 rounded-3xl shadow-xl border-t-4 border-kmarket-green w-full">
+            <div class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                <i class="fas fa-store text-5xl text-kmarket-green"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-4 leading-tight">Khám Phá K-Market <br> <span class="text-kmarket-red">Nhận Quà Liền Tay!</span></h1>
+            <p class="text-gray-600 mb-8 leading-relaxed">
+                Tham gia thử thách trả lời 7 câu hỏi về ẩm thực Hàn Quốc tại K-Market để mở khóa <strong>Vòng Quay May Mắn</strong> với hàng ngàn phần quà.
+            </p>
+            <button onclick="startQuiz()" class="w-full bg-kmarket-green hover:bg-green-800 text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg transition-all transform hover:-translate-y-1 active:translate-y-0">
+                BẮT ĐẦU CHƠI NGAY
+            </button>
+        </div>
+
+        <!-- ================= SCREEN 1: QUIZ ================= -->
+        <div id="screen-quiz" class="screen flex-col w-full bg-white rounded-3xl shadow-xl p-6 md:p-8 border-t-4 border-kmarket-green">
+            <div class="flex justify-between items-center mb-6">
+                <div class="inline-flex items-center gap-2 bg-green-50 text-kmarket-green px-4 py-1.5 rounded-full text-sm font-bold border border-green-100">
+                    <i class="fas fa-question-circle"></i>
+                    <span id="quiz-progress">Câu hỏi 1/7</span>
+                </div>
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Thử thách</div>
+            </div>
+            
+            <div class="mb-8 min-h-[120px] flex items-center">
+                <h3 id="quiz-question" class="text-xl md:text-2xl font-bold text-gray-800 leading-snug">
+                    Đang tải câu hỏi...
+                </h3>
+            </div>
+            
+            <div id="quiz-options" class="flex flex-col gap-3">
+                <!-- Options injected via JS -->
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 2: WHEEL ================= -->
+        <div id="screen-wheel" class="screen flex-col items-center w-full bg-white rounded-3xl shadow-xl p-6 md:p-10 border-t-4 border-kmarket-red">
+            <div class="mb-2 inline-flex items-center gap-2 bg-red-50 text-kmarket-red px-4 py-1.5 rounded-full text-sm font-bold border border-red-100 animate-pulse-fast">
+                <i class="fas fa-gift"></i>
+                Đã Mở Khóa Vòng Quay
+            </div>
+            <h2 class="text-2xl font-extrabold text-gray-900 mb-2">Thử Vận May!</h2>
+            <p class="text-gray-500 mb-8 text-sm text-center">Chạm vào nút để quay và nhận phần quà siêu thị của bạn.</p>
+            
+            <!-- Wheel Container -->
+            <div class="relative w-full max-w-[320px] aspect-square mx-auto mb-8">
+                <!-- Pointer/Marker -->
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[15px] z-20 drop-shadow-xl">
+                    <i class="fas fa-map-marker-alt text-5xl text-kmarket-red"></i>
+                </div>
+                
+                <!-- The Canvas -->
+                <canvas id="wheel-canvas" width="600" height="600" class="w-full h-full"></canvas>
+                
+                <!-- Center Decoration -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white rounded-full border-4 border-kmarket-green shadow-xl flex items-center justify-center z-10">
+                    <span class="font-bold text-xl text-kmarket-green">K<span class="text-kmarket-red">.</span></span>
+                </div>
+            </div>
+
+            <button id="spin-btn" onclick="spinWheel()" class="w-full py-4 bg-kmarket-red text-white font-bold text-xl rounded-2xl shadow-lg shadow-red-500/40 hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                QUAY NGAY
+            </button>
+        </div>
+
+    </main>
+
+    <!-- ================= MODALS ================= -->
+    
+    <!-- Modal: Wrong Answer -->
+    <div id="modal-wrong" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="modal-content bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border-2 border-kmarket-red">
+            <div class="w-20 h-20 bg-red-100 text-kmarket-red rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
+                <i class="fas fa-times"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2 text-gray-900">Chưa chính xác!</h3>
+            <p class="text-gray-600 mb-6">Bạn hãy suy nghĩ kĩ và thử chọn lại nhé!</p>
+            <button onclick="retryQuestion()" class="w-full py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl transition-colors">
+                Chọn lại
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Correct Answer -->
+    <div id="modal-correct" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="modal-content bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border-2 border-kmarket-green">
+            <div class="w-20 h-20 bg-green-100 text-kmarket-green rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">
+                <i class="fas fa-check"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-2 text-gray-900">Chính xác!</h3>
+            <p class="text-gray-600 mb-6">Bạn rất am hiểu về các sản phẩm K-Market đấy.</p>
+            <button id="next-q-btn" onclick="handleNextStep()" class="w-full py-3.5 bg-kmarket-green hover:bg-green-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-green-500/30">
+                Tiếp tục
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Prize Winner -->
+    <div id="modal-win" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+        <div class="modal-content bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden border-4 border-kmarket-green">
+            <div class="absolute -top-16 -right-16 w-40 h-40 bg-green-100 rounded-full mix-blend-multiply opacity-50"></div>
+            <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-red-100 rounded-full mix-blend-multiply opacity-50"></div>
+            
+            <div class="relative z-10">
+                <div class="w-24 h-24 bg-kmarket-red text-white rounded-full flex items-center justify-center mx-auto mb-4 text-5xl shadow-xl border-4 border-white animate-bounce-slow">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <h3 class="text-3xl font-black text-gray-900 mb-2">Chúc mừng bạn!</h3>
+                <p class="text-gray-600 mb-4 font-medium">Bạn đã quay trúng phần quà:</p>
+                
+                <div class="bg-gradient-to-r from-green-50 to-green-100 border-2 border-kmarket-green rounded-2xl py-4 px-3 mb-6 shadow-sm">
+                    <span id="prize-name" class="text-2xl font-extrabold text-kmarket-green block">Voucher 50K</span>
+                </div>
+
+                <div id="voucher-code-container" class="mb-6">
+                    <p class="text-xs text-gray-500 mb-1 uppercase font-bold tracking-wider">Mã Voucher của bạn</p>
+                    <div class="flex items-center justify-center gap-2">
+                        <code id="voucher-code" class="bg-gray-100 px-4 py-2 rounded-lg text-lg font-mono font-bold text-gray-800 border border-gray-200">KMARKET-XXXXX</code>
+                        <button onclick="copyCode()" class="w-10 h-10 bg-kmarket-green text-white rounded-lg hover:bg-green-700 flex items-center justify-center transition-colors" title="Sao chép">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <p id="prize-instruction" class="text-sm text-gray-600 mb-6 leading-relaxed">
+                    Đưa mã này cho nhân viên thu ngân tại hệ thống K-Market để được áp dụng ngay nhé!
+                </p>
+                
+                <button onclick="location.reload()" class="w-full py-4 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition-colors shadow-lg">
+                    Chơi lại từ đầu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Quiz Data (7 Questions about Korean Food) ---
+        const quizData = [
+            {
+                question: "Món ăn kèm truyền thống quốc dân của Hàn Quốc, làm từ bắp cải lên men cay là gì?",
+                options: ["A. Kimchi", "B. Natto", "C. Dưa món"],
+                correctIndex: 0
+            },
+            {
+                question: "Đồ uống có cồn truyền thống nổi tiếng nhất của Hàn Quốc, thường đựng trong chai thủy tinh xanh lá cây là gì?",
+                options: ["A. Rượu Sake", "B. Rượu Soju", "C. Rượu Vang"],
+                correctIndex: 1
+            },
+            {
+                question: "Món bánh gạo cay đường phố cực kỳ phổ biến của Hàn Quốc có tên là gì?",
+                options: ["A. Tteokbokki", "B. Takoyaki", "C. Bingsu"],
+                correctIndex: 0
+            },
+            {
+                question: "Thức uống ngọt nổi tiếng của Hàn Quốc (thương hiệu Binggrae) thường có vị gì đặc trưng?",
+                options: ["A. Sữa dâu", "B. Sữa bắp", "C. Sữa chuối"],
+                correctIndex: 2
+            },
+            {
+                question: "Món cơm cuộn rong biển Hàn Quốc, thường dùng cho các buổi dã ngoại tên là gì?",
+                options: ["A. Sushi", "B. Kimbap", "C. Onigiri"],
+                correctIndex: 1
+            },
+            {
+                question: "Mì ăn liền kiểu Hàn Quốc (thường có sợi to và cay) được gọi chung là gì?",
+                options: ["A. Udon", "B. Pho", "C. Ramyeon"],
+                correctIndex: 2
+            },
+            {
+                question: "Trong bữa ăn Hàn Quốc, các dĩa thức ăn kèm nhỏ xinh đặt quanh món chính được gọi là gì?",
+                options: ["A. Banchan", "B. Dimsum", "C. Tapas"],
+                correctIndex: 0
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let isProcessingAction = false; // The absolute lock to prevent double clicks
+
+        // --- 2. Wheel Configuration ---
+        const prizes = [
+            "Voucher 10%", 
+            "Voucher 20%", 
+            "Voucher 50K", 
+            "Chúc bạn may mắn", 
+            "Voucher 100K", 
+            "Nước ngọt miễn phí"
+        ];
+        
+        // Colors mapping: Dark Green (#00563f), Red, Gray, Yellow
+        const colors = [
+            "#00563f", // Dark Green
+            "#E31837", // Red
+            "#00563f", // Dark Green
+            "#9CA3AF", // Gray (Good luck)
+            "#E31837", // Red
+            "#F59E0B"  // Yellow/Orange
+        ];
+        
+        const numSlices = prizes.length;
+        const sliceAngle = 360 / numSlices;
+        const canvas = document.getElementById("wheel-canvas");
+        const ctx = canvas.getContext("2d");
+
+        let isSpinning = false;
+        let currentRotation = 0;
+
+        // --- 3. Initialization ---
+        window.onload = () => {
+            drawWheel();
+        };
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => {
+                el.classList.remove('active');
+            });
+            setTimeout(() => {
+                document.getElementById(screenId).classList.add('active');
+            }, 50);
+        }
+
+        function startQuiz() {
+            switchScreen('screen-quiz');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            // Safety check
+            if (currentQuestionIndex >= quizData.length) return;
+
+            const data = quizData[currentQuestionIndex];
+            document.getElementById('quiz-progress').innerText = `Câu hỏi ${currentQuestionIndex + 1}/${quizData.length}`;
+            document.getElementById('quiz-question').innerText = data.question;
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+            
+            data.options.forEach((opt, index) => {
+                // Dynamically create buttons
+                const btn = document.createElement('button');
+                btn.className = 'quiz-btn w-full text-left py-4 px-6 bg-white border-2 border-gray-100 rounded-2xl text-lg font-medium text-gray-700 hover:border-kmarket-green hover:bg-green-50 transition-all shadow-sm';
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedIndex, btnElement) {
+            // BUG FIX: Prevent any action if already processing an answer
+            if (isProcessingAction) return;
+            isProcessingAction = true; 
+            
+            const data = quizData[currentQuestionIndex];
+            
+            // Visual feedback
+            if (selectedIndex === data.correctIndex) {
+                btnElement.classList.replace('border-gray-100', 'border-kmarket-green');
+                btnElement.classList.add('text-kmarket-green', 'bg-green-50', 'font-bold');
+                
+                setTimeout(() => {
+                    if (currentQuestionIndex === quizData.length - 1) {
+                        document.getElementById('next-q-btn').innerText = "Đến Vòng Quay Ngay!";
+                    } else {
+                        document.getElementById('next-q-btn').innerText = "Câu tiếp theo";
+                    }
+                    openModal('modal-correct');
+                }, 400);
+            } else {
+                btnElement.classList.replace('border-gray-100', 'border-kmarket-red');
+                btnElement.classList.add('text-kmarket-red', 'bg-red-50');
+                
+                setTimeout(() => {
+                    openModal('modal-wrong');
+                }, 400);
+            }
+        }
+
+        function handleNextStep() {
+            // This function handles the "Next" button on the correct modal safely
+            closeModal('modal-correct');
+            
+            // If it was the last question, go to wheel
+            if (currentQuestionIndex === quizData.length - 1) {
+                switchScreen('screen-wheel');
+            } else {
+                currentQuestionIndex++;
+                renderQuestion();
+            }
+            
+            // Release the lock ONLY after processing is done
+            setTimeout(() => {
+                isProcessingAction = false;
+            }, 300);
+        }
+
+        function retryQuestion() {
+            closeModal('modal-wrong');
+            // Reset the style of the wrong button (re-render the whole question cleanly)
+            renderQuestion();
+            isProcessingAction = false;
+        }
+
+        // --- 5. Wheel Drawing Logic ---
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 10; 
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < numSlices; i++) {
+                const startAngle = (-Math.PI / 2) - (sliceAngle / 2 * Math.PI / 180) + (i * sliceAngle * Math.PI / 180);
+                const endAngle = startAngle + (sliceAngle * Math.PI / 180);
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "#ffffff"; 
+                ctx.stroke();
+
+                ctx.save();
+                const textAngle = startAngle + (endAngle - startAngle) / 2;
+                ctx.translate(centerX, centerY);
+                ctx.rotate(textAngle);
+                
+                ctx.textAlign = "right";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#ffffff"; 
+                ctx.font = "bold 32px Inter, sans-serif";
+                
+                ctx.translate(radius - 30, 0);
+                
+                const text = prizes[i];
+                ctx.fillText(text, 0, 0);
+               
+                ctx.restore();
+            }
+        }
+
+        // --- 6. Wheel Interaction Logic ---
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            const btn = document.getElementById('spin-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> ĐANG QUAY...';
+            btn.classList.replace('bg-kmarket-red', 'bg-gray-400');
+
+            const randomDegree = Math.floor(Math.random() * 360);
+            const spinAmount = (360 * 6) + randomDegree;
+            currentRotation += spinAmount;
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i> ĐÃ QUAY';
+
+                const actualRotatedDeg = currentRotation % 360;
+                let winningIndex = Math.floor(((360 - actualRotatedDeg + (sliceAngle / 2)) % 360) / sliceAngle);
+                
+                const prize = prizes[winningIndex];
+                showResult(prize);
+
+            }, 4000); 
+        }
+
+        function showResult(prize) {
+            document.getElementById('prize-name').innerText = prize;
+            const codeContainer = document.getElementById('voucher-code-container');
+            const instruction = document.getElementById('prize-instruction');
+            const icon = document.querySelector('#modal-win .fa-gift');
+            
+            if (prize === "Chúc bạn may mắn") {
+                codeContainer.style.display = 'none';
+                instruction.innerText = "Đừng buồn nhé, K-Market vẫn còn rất nhiều chương trình ưu đãi khác đang chờ bạn!";
+                document.getElementById('prize-name').classList.replace('text-kmarket-green', 'text-gray-500');
+                icon.className = 'fas fa-face-sad-tear';
+                icon.parentElement.classList.replace('bg-kmarket-red', 'bg-gray-400');
+            } else {
+                codeContainer.style.display = 'block';
+                const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+                document.getElementById('voucher-code').innerText = `KMARKET-${randomStr}`;
+                
+                instruction.innerText = "Đưa mã này cho nhân viên thu ngân hoặc nhập trên ứng dụng K-Market để nhận quà nhé!";
+                document.getElementById('prize-name').classList.replace('text-gray-500', 'text-kmarket-green');
+                icon.className = 'fas fa-gift';
+                icon.parentElement.classList.replace('bg-gray-400', 'bg-kmarket-red');
+                createConfetti();
+            }
+
+            openModal('modal-win');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function copyCode() {
+            const code = document.getElementById('voucher-code').innerText;
+            const tempInput = document.createElement("input");
+            tempInput.value = code;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            const btn = document.querySelector('#voucher-code-container button');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            btn.classList.replace('bg-kmarket-green', 'bg-gray-800');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.replace('bg-gray-800', 'bg-kmarket-green');
+            }, 2000);
+        }
+
+        function createConfetti() {
+            const container = document.body;
+            const colors = ['#00563f', '#E31837', '#FFD700', '#4ADE80'];
+            
+            for (let i = 0; i < 80; i++) {
+                const conf = document.createElement('div');
+                conf.classList.add('confetti');
+                
+                const left = Math.random() * 100 + 'vw';
+                const bg = colors[Math.floor(Math.random() * colors.length)];
+                
+                conf.style.left = left;
+                conf.style.top = '-20px';
+                conf.style.backgroundColor = bg;
+                
+                if (Math.random() > 0.5) {
+                    conf.style.borderRadius = '50%';
+                }
+                
