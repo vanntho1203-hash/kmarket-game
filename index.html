@@ -48,4 +48,251 @@
             <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-10 h-10 kmarket-text" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
             </div>
-            <h2 class="text-2xl font-bold kmarket
+            <h2 class="text-2xl font-bold kmarket-text mb-2">Khám Phá K-Market</h2>
+            <h3 class="text-xl font-bold kmarket-red mb-4">Nhận Quà Liền Tay!</h3>
+            <p class="text-gray-500 mb-8 text-sm">Tham gia thử thách trả lời 7 câu hỏi về ẩm thực Hàn Quốc tại K-Market để mở khóa <strong>Vòng Quay May Mắn</strong> với hàng ngàn phần quà.</p>
+            <button onclick="startGame()" class="w-full kmarket-green text-white font-bold py-4 rounded-xl hover:bg-green-800 transition-colors shadow-lg">BẮT ĐẦU CHƠI NGAY</button>
+        </div>
+
+        <!-- MÀN HÌNH 2: CÂU HỎI -->
+        <div id="screen-quiz" class="p-6 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-sm font-semibold text-gray-400">Câu hỏi <span id="q-current" class="kmarket-text text-lg">1</span>/7</span>
+                <div class="w-1/2 bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="kmarket-green h-2 rounded-full" style="width: 14%"></div>
+                </div>
+            </div>
+            <h3 id="question-text" class="text-lg font-bold text-gray-800 mb-6 min-h-[60px]">Đang tải câu hỏi...</h3>
+            <div id="answers-container" class="space-y-3">
+                <!-- Nút đáp án sẽ được tạo bằng JS -->
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH 3: VÒNG QUAY -->
+        <div id="screen-wheel" class="p-6 hidden text-center">
+            <h2 class="text-xl font-bold kmarket-text mb-2">Chúc Mừng!</h2>
+            <p class="text-gray-500 mb-6 text-sm">Bạn đã xuất sắc vượt qua 7 câu hỏi. Hãy quay thưởng ngay!</p>
+            
+            <div class="wheel-container mb-8">
+                <div class="wheel-pointer"></div>
+                <canvas id="wheel" width="300" height="300"></canvas>
+            </div>
+            
+            <button id="btn-spin" onclick="spinWheel()" class="w-full kmarket-bg-red text-white font-bold py-4 rounded-xl hover:bg-red-700 transition-colors shadow-lg text-lg">QUAY NGAY</button>
+        </div>
+
+    </div>
+
+    <!-- Modal Thông báo Kết quả Câu hỏi / Trúng thưởng -->
+    <div id="modal-overlay" class="flex">
+        <div class="bg-white rounded-2xl p-6 w-80 text-center shadow-2xl transform transition-all scale-100">
+            <div id="modal-icon" class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 text-3xl"></div>
+            <h3 id="modal-title" class="text-xl font-bold mb-2">Tiêu đề</h3>
+            <p id="modal-desc" class="text-gray-600 mb-6 text-sm">Nội dung</p>
+            <button id="modal-btn" class="w-full text-white font-bold py-3 rounded-xl transition-colors">Nút bấm</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA CÂU HỎI THỰC PHẨM K-MARKET ---
+        const quizData = [
+            { q: "Đâu là món ăn kèm quốc dân không thể thiếu trong bữa ăn Hàn Quốc?", a: ["Kimchi", "Sushi", "Dimsum", "Pad Thái"], correct: 0 },
+            { q: "Loại rượu truyền thống nổi tiếng nhất của Hàn Quốc chai màu xanh lá cây là gì?", a: ["Sake", "Soju", "Vodka", "Tequila"], correct: 1 },
+            { q: "Món bánh gạo cay đường phố nổi tiếng của Hàn Quốc tên là gì?", a: ["Kimbap", "Bibimbap", "Tteokbokki", "Jajangmyeon"], correct: 2 },
+            { q: "Loại sữa vị trái cây nào đóng chai hình chum cực kỳ phổ biến tại K-Market?", a: ["Sữa dâu", "Sữa chuối", "Sữa dưa lưới", "Sữa ngô"], correct: 1 },
+            { q: "Cơm cuộn rong biển Hàn Quốc được gọi là gì?", a: ["Kimbap", "Onigiri", "Maki", "Mandu"], correct: 0 },
+            { q: "Mì tôm (mì ăn liền) trong tiếng Hàn gọi là gì?", a: ["Udon", "Soba", "Ramyeon", "Phở"], correct: 2 },
+            { q: "Các đĩa đồ ăn kèm nhỏ dọn ra trước bữa ăn chính tại Hàn Quốc gọi chung là gì?", a: ["Dessert", "Banchan", "Appetizer", "Snack"], correct: 1 }
+        ];
+
+        // --- BIẾN TRẠNG THÁI ---
+        let currentQuestionIndex = 0;
+        let isProcessingAction = false; // CỜ BẢO VỆ CHỐNG DOUBLE CLICK (QUAN TRỌNG)
+
+        // --- HÀM ĐIỀU HƯỚNG CƠ BẢN ---
+        function showScreen(screenId) {
+            document.getElementById('screen-welcome').style.display = 'none';
+            document.getElementById('screen-quiz').style.display = 'none';
+            document.getElementById('screen-wheel').style.display = 'none';
+            document.getElementById(screenId).style.display = 'block';
+        }
+
+        function startGame() {
+            currentQuestionIndex = 0;
+            showScreen('screen-quiz');
+            loadQuestion();
+        }
+
+        // --- LOGIC CÂU HỎI ---
+        function loadQuestion() {
+            isProcessingAction = false; // Mở khóa cho phép click
+            
+            const qData = quizData[currentQuestionIndex];
+            document.getElementById('q-current').innerText = currentQuestionIndex + 1;
+            document.getElementById('progress-bar').style.width = ((currentQuestionIndex + 1) / quizData.length * 100) + '%';
+            document.getElementById('question-text').innerText = qData.q;
+            
+            const ansContainer = document.getElementById('answers-container');
+            ansContainer.innerHTML = '';
+            
+            qData.a.forEach((ans, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl border-2 border-gray-100 hover:border-[#00563f] hover:bg-green-50 transition-all font-semibold text-gray-700";
+                btn.innerText = ans;
+                
+                // Gán sự kiện click trực tiếp, kiểm tra cờ bảo vệ
+                btn.onclick = function() {
+                    if(isProcessingAction) return; // Nếu đang xử lý thì chặn click
+                    handleAnswer(index);
+                };
+                
+                ansContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedIndex) {
+            isProcessingAction = true; // KHÓA CLICK ngay lập tức
+            
+            const isCorrect = (selectedIndex === quizData[currentQuestionIndex].correct);
+            
+            const modalOverlay = document.getElementById('modal-overlay');
+            const mIcon = document.getElementById('modal-icon');
+            const mTitle = document.getElementById('modal-title');
+            const mDesc = document.getElementById('modal-desc');
+            const mBtn = document.getElementById('modal-btn');
+            
+            modalOverlay.style.display = 'flex';
+            
+            if(isCorrect) {
+                mIcon.innerHTML = "🎉"; mIcon.className = "w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 text-3xl bg-green-100";
+                mTitle.innerText = "Chính Xác!"; mTitle.className = "text-xl font-bold mb-2 kmarket-text";
+                mDesc.innerText = "Tuyệt vời! Hãy tiếp tục nào.";
+                mBtn.innerText = "Tiếp Tục"; mBtn.className = "w-full text-white font-bold py-3 rounded-xl transition-colors kmarket-green hover:bg-green-800";
+                
+                mBtn.onclick = function() {
+                    modalOverlay.style.display = 'none';
+                    // Tăng index và kiểm tra xem đã hết câu hỏi chưa
+                    currentQuestionIndex++;
+                    if(currentQuestionIndex < quizData.length) {
+                        loadQuestion();
+                    } else {
+                        showScreen('screen-wheel');
+                        drawWheel();
+                    }
+                };
+            } else {
+                mIcon.innerHTML = "😅"; mIcon.className = "w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 text-3xl bg-red-100";
+                mTitle.innerText = "Chưa Đúng Rồi!"; mTitle.className = "text-xl font-bold mb-2 kmarket-red";
+                mDesc.innerText = "Đáp án đúng là: " + quizData[currentQuestionIndex].a[quizData[currentQuestionIndex].correct];
+                mBtn.innerText = "Thử Lại"; mBtn.className = "w-full text-white font-bold py-3 rounded-xl transition-colors kmarket-bg-red hover:bg-red-700";
+                
+                mBtn.onclick = function() {
+                    modalOverlay.style.display = 'none';
+                    isProcessingAction = false; // Mở khóa để người dùng chọn lại
+                };
+            }
+        }
+
+        // --- LOGIC VÒNG QUAY MAY MẮN ---
+        const segments = ["Voucher 10%", "Chúc may mắn", "Voucher 20%", "Nước ngọt Free", "Voucher 50K", "Mì cay Free"];
+        const colors = ["#00563f", "#ffffff", "#e53935", "#ffffff", "#00563f", "#ffffff"];
+        const textColors = ["#ffffff", "#00563f", "#ffffff", "#e53935", "#ffffff", "#00563f"];
+        
+        let wheelCanvas, ctx;
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            wheelCanvas = document.getElementById("wheel");
+            if (!wheelCanvas) return;
+            ctx = wheelCanvas.getContext("2d");
+            const centerX = wheelCanvas.width / 2;
+            const centerY = wheelCanvas.height / 2;
+            const radius = centerX;
+            const arc = Math.PI / (segments.length / 2);
+
+            ctx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+
+            for (let i = 0; i < segments.length; i++) {
+                const angle = currentRotation + i * arc;
+                ctx.beginPath();
+                ctx.fillStyle = colors[i];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + arc, false);
+                ctx.lineTo(centerX, centerY);
+                ctx.fill();
+
+                ctx.save();
+                ctx.fillStyle = textColors[i];
+                ctx.translate(centerX + Math.cos(angle + arc / 2) * (radius - 50), centerY + Math.sin(angle + arc / 2) * (radius - 50));
+                ctx.rotate(angle + arc / 2 + Math.PI / 2);
+                ctx.font = "bold 14px Inter";
+                ctx.fillText(segments[i], -ctx.measureText(segments[i]).width / 2, 0);
+                ctx.restore();
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            document.getElementById('btn-spin').disabled = true;
+            document.getElementById('btn-spin').classList.add('opacity-50');
+            
+            const spinTimeTotal = 4000;
+            const spinAngleStart = Math.random() * 10 + 20; // Số vòng quay
+            let spinTime = 0;
+
+            function animateSpin() {
+                spinTime += 30;
+                if (spinTime >= spinTimeTotal) {
+                    isSpinning = false;
+                    showPrize();
+                    return;
+                }
+                const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+                currentRotation += (spinAngle * Math.PI / 180);
+                drawWheel();
+                requestAnimationFrame(animateSpin);
+            }
+            animateSpin();
+        }
+
+        function easeOut(t, b, c, d) {
+            const ts = (t /= d) * t;
+            const tc = ts * t;
+            return b + c * (tc + -3 * ts + 3 * t);
+        }
+
+        function showPrize() {
+            const degrees = (currentRotation * 180 / Math.PI) % 360;
+            const arcDeg = 360 / segments.length;
+            // Tính toán index dựa trên vị trí kim chỉ (top = 270 độ so với 0 độ gốc của canvas)
+            let rawIndex = Math.floor((360 - degrees + 270) % 360 / arcDeg);
+            let winningIndex = rawIndex % segments.length;
+            
+            const modalOverlay = document.getElementById('modal-overlay');
+            const mIcon = document.getElementById('modal-icon');
+            const mTitle = document.getElementById('modal-title');
+            const mDesc = document.getElementById('modal-desc');
+            const mBtn = document.getElementById('modal-btn');
+            
+            modalOverlay.style.display = 'flex';
+            mIcon.innerHTML = "🎁"; mIcon.className = "w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 text-3xl bg-yellow-100";
+            mTitle.innerText = "Kết Quả"; mTitle.className = "text-xl font-bold mb-2 kmarket-text";
+            
+            if(segments[winningIndex] === "Chúc may mắn") {
+                mDesc.innerText = "Trượt rồi! Chúc bạn may mắn lần sau nhé.";
+                mBtn.innerText = "Đóng"; 
+            } else {
+                mDesc.innerHTML = `Chúc mừng bạn đã trúng: <br><strong class="text-lg text-[#e53935]">${segments[winningIndex]}</strong><br>Vui lòng đưa màn hình này cho thu ngân.`;
+                mBtn.innerText = "Nhận Quà";
+            }
+            
+            mBtn.className = "w-full text-white font-bold py-3 rounded-xl transition-colors kmarket-bg-red hover:bg-red-700";
+            mBtn.onclick = function() {
+                modalOverlay.style.display = 'none';
+            };
+        }
+    </script>
+</body>
+</html>
